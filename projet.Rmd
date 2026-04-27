@@ -18,7 +18,9 @@ p_load(vtable)           #pour de meilleures tables statistiques
 p_load(patchwork)        #c'est pour mieux présenter les graphiques, il laisse plus de choix que simplement grid.arrange()
 ```
 ```{r file csv}
-teens <- read_csv("C:\\Users\\oscar\\OneDrive\\Bureau\\MIASHS\\Econométrie\\Projet\\Student Depression Dataset.csv")                     #important : inverser ou doubler les backslashs  
+teen_addiction <- "https://raw.githubusercontent.com/insseuv/projet-conom-trie/refs/heads/main/teen_phone_addiction_dataset.csv?token=GHSAT0AAAAAAD3SQCDDBXSLI5PNBHODXSOW2PPGE5Q"
+teens <- read_csv(teen_addiction)
+#important : inverser ou doubler les backslashs  
 #faudra ajuster le chemin d'accès pour chaque machine
 
 #petite vue d'ensemble des données (glimpse) avec un résumé rapide de chaque variable (summary) 
