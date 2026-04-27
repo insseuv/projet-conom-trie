@@ -9,10 +9,20 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ```{r packages}
-library(tidyverse)
-library(knitr)
-library(pdist)
-library(ggplot2)
-library(factoextra)
-library(NbClust)
+p_load <- pacman::p_load
+p_load(readr)            #pour importer nos données
+p_load(tidyverse)        #pour les fonctions essentielles (ggplot,...)
+p_load(questionr)        #pour les tables statistiques
+p_load(Epi)              #pour les tables statistiques aussi
+p_load(vtable)           #pour de meilleures tables statistiques
+p_load(patchwork)        #c'est pour mieux présenter les graphiques, il laisse plus de choix que simplement grid.arrange()
+```
+```{r file csv}
+teens <- read_csv("C:\\Users\\oscar\\OneDrive\\Bureau\\MIASHS\\Econométrie\\Projet\\Student Depression Dataset.csv")                     #important : inverser ou doubler les backslashs  
+#faudra ajuster le chemin d'accès pour chaque machine
+
+#petite vue d'ensemble des données (glimpse) avec un résumé rapide de chaque variable (summary) 
+glimpse(teens)
+summary(teens)
+
 ```
