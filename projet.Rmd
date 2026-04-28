@@ -12,6 +12,8 @@ p_load(questionr)        #pour les tables statistiques
 p_load(Epi)              #pour les tables statistiques aussi
 p_load(vtable)           #pour de meilleures tables statistiques
 p_load(patchwork)        #c'est pour mieux présenter les graphiques, il laisse plus de choix que simplement grid.arrange()
+p_load(ggplot2)
+p_load(e1071) # Pour l'asymétrie et l'aplatissement
 ```
 ```{r file csv}
 teen_addiction <- "https://raw.githubusercontent.com/insseuv/projet-conom-trie/refs/heads/main/teen_phone_addiction_dataset.csv?token=GHSAT0AAAAAAD3SQCDDBXSLI5PNBHODXSOW2PPGE5Q"
