@@ -78,42 +78,7 @@ ggplot(teens, aes(y = Social_Interactions)) +
     #Conclusion : La variable Social_Interactions suit une distribution proche d'une loi uniforme discrète. Il n'y a pas de groupe dominant, les adolescents de cet échantillon se répartissent de manière assez égale sur tous les niveaux d'interaction sociale possible. Cela suggère que dans ce dataset, l'abondance d'interactions sociales n'est pas polarisé.
 ```
 
-```{r étude variable qualitative}
 
-# On crée un tableau croisé des fréquences
-tab_frequence <- table(teens$Phone_Usage_Purpose)
-tab_proportion <- prop.table(tab_frequence) * 100
-
-# Fusion dans un dataframe propre pour l'affichage
-analyse_qualitative <- data.frame(
-  Usage = names(tab_frequence),
-  Effectif = as.numeric(tab_frequence),
-  Pourcentage = round(as.numeric(tab_proportion), 2)
-)
-
-print(analyse_qualitative)
-
-# 4. Visualisation : Bar Plot (Diagramme en barres)
-ggplot(teens, aes(x = Phone_Usage_Purpose, fill = Phone_Usage_Purpose)) +
-  geom_bar() +
-  theme_minimal() +
-  labs(title = "Répartition des principaux usages du téléphone",
-       x = "Type d'usage",
-       y = "Nombre d'adolescents") +
-  scale_fill_brewer(palette = "Set3") + # Optionnel : pour de jolies couleurs
-  theme(legend.position = "none")
-
-
-# interprétation :
-# 1. Type de variable : Phone_Usage_Purpose est une variable qualitative    nominale à 5 modalités (Browsing, Education, Gaming, Other, Social Media).
-
-# 2. Distribution : La distribution est très équilibrée. Contrairement à    certaines idées reçues, aucune modalité ne domine massivement les autres. Chaque catégorie d'usage représente environ 20% de l'échantillon.
-
-# 3. Mode (Valeur la plus fréquente) : Selon les données, l'usage "Social Media" ou "Gaming" sont souvent les plus représentés, mais les écarts avec    "Education" ou "Browsing" sont minimes dans ce jeu de données (environ 600   individus par catégorie sur 3000).
-
-# 4. Conclusion : L'utilisation du téléphone chez ces adolescents est    multidimensionnelle. L'usage n'est pas uniquement récréatif (Gaming/Social) puisque l'usage éducatif est tout aussi présent. Cela montre une intégration variée des outils numériques dans leur quotidien.
-# --------------------------------------------------------------------------
-```
 
 #analyse bivariée pour contredire le mythe du gaming pour les mecs et des réseaux pour les meufs
 ```{r analyse bivariée entre gender et phone purpose}
@@ -145,22 +110,6 @@ ggplot(teens, aes(x = Gender, fill = Phone_Usage_Purpose)) +
   scale_fill_brewer(palette = "Pastel1")
 
 
-# interprétation:
-
-# 1. numérique :
-#    - Les profils sont assez proches entre les genres. 
-#    - On note que 22.4% des personnes du genre 'Other' utilisent le téléphone
-#      pour l'éducation, contre 17.3% chez les femmes.
-#    - Les femmes semblent avoir une part d'usage 'Other' (23%) légèrement 
-#      plus élevée que les hommes (18.8%).
-
-# 2. graphique :
-#    - Le graphique en barres empilées montre des segments de tailles 
-#      très similaires pour chaque genre.
-#    - Cela confirme visuellement l'absence de spécialisation d'un genre
-#      particulier dans un usage spécifique (ex: le gaming n'est pas 
-#      exclusivement masculin, les réseaux sociaux ne sont pas exclusivement féminins).
-# --------------------------------------------------------------------------
 ```
 
 ```{r régression linéaire entre Interaction / Perf}
