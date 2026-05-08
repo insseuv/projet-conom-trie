@@ -18,10 +18,16 @@ p_load(readxl)
 ```
 
 
-```{r file csv}
-fifa <- read_excel("Career Mode female player datasets - FIFA 16-22.xlsx")
-#important : inverser ou doubler les backslashs  
-#faudra ajuster le chemin d'accès pour chaque machine
+```{r file fusion du .xlsx}
+path <- "Career Mode female player datasets - FIFA 16-22.xlsx"
+
+# lister les noms de tous les onglets présents dans le fichier
+onglets <- excel_sheets(path)
+
+# map_df va appliquer la lecture à chaque nom d'onglet
+# .id donne une colonne pour les différents fifa genre "FIFA 22"
+fifa <- onglets %>% set_names() %>%
+  map_df(~ read_excel(path, sheet = .x), .id = "annee_fifa")
 
 ```
 
