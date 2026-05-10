@@ -15,9 +15,38 @@ p_load(patchwork)        #c'est pour mieux présenter les graphiques, il laisse 
 p_load(ggplot2)
 p_load(e1071) # Pour l'asymétrie et l'aplatissement
 p_load(readxl)
+p_load(factoextra)
+p_load(cluster)
+p_load(grid)
+p_load(png)
 ```
 
+*Introduction*
+
+*FIFA*, anciennement FIFA Football une série de jeux vidéo de football développée et éditée annuellement par Electronic Arts depuis 1993. Le but de ce jeu est comme dans la vraie vie de jouer au foot, il est possible d'incarner de vraie équipe ou même de jouer en ligne en créant sa propre équipé avec des vrais/es joueurs/ses.
+
+Dans le monde du football, ce jeu et particulièrement les statistiques des joueurs/ses ont une importance.
+
+En matière de visibilité du football féminin, EA Sports est l'un des acteurs qui a le plus fait bouger les lignes. L'éditeur américain fait tomber un premier tabou en 2015, avec l'introduction des équipes féminines dans FIFA 16
+
+```{r img}
+#Cela ne sert que pour le rendu pdf mais n'apparait pas dans le pdf rendu par le code
+img <- readPNG("fifa16.png")
+grid.raster(img, width = 0.7)
+```
+
+Au football, chaque équipe est composée de 11 joueurs/ses séparés en 3 blocs :
+ - La défense
+ - Les milieux
+ -L'attaque
+Et enfin le gardien, qu'on ne va pas traiter ici.
+
+Notre objectif ici est d'analyser comment les données sont réparties et pourquoi, et d'analyser sportivement les attributions des caractéristiques des joueuses.
+
+Vu que nous avons 4 onglets csv, il est essentiel de les fusionner pour avoir accès à toutes les données en même temps
+
 ```{r file fusion du .xlsx}
+#Ici, on rajoute une collonne .id = "FIFA n"
 path <- "Career Mode female player datasets - FIFA 16-22.xlsx"
 
 # lister les noms de tous les onglets présents dans le fichier
@@ -27,14 +56,20 @@ onglets <- excel_sheets(path)
 # .id donne une colonne pour les différents fifa genre "FIFA 22"
 fifa <- onglets %>% set_names() %>%
   map_df(~ read_excel(path, sheet = .x), .id = "annee_fifa")
+fifa <- fifa %>%
+  select(c("annee_fifa", "long_name", "player_positions", "overall", "potential", "age", "height_cm", "weight_kg", "nationality_name", "preferred_foot", "weak_foot", "skill_moves", "preferred_foot", "weak_foot", "skill_moves","pace", "shooting", "passing", "dribbling", "defending", "physic", "mentality_aggression" ,"mentality_interceptions" , "mentality_positioning", "mentality_vision", "mentality_penalties","work_rate"))      #on retire les variables qu'on juge redondantes ou "néfastes" (vides)
+#on pourrait faire na.omit, mais il y a un risque chaque ligne contienne des données manquantes, on vérifie head(fifa)
+#Ici on sélectionne que les données qui vont nous servir
 ```
 
-```{r}
-fifa_clean <- fifa %>% 
-  select(c("annee_fifa", "long_name", "player_positions", "overall", "potential", "age", "height_cm", "weight_kg", "nationality_name", "preferred_foot", "weak_foot", "skill_moves", "preferred_foot", "weak_foot", "skill_moves","pace", "shooting", "passing", "dribbling", "defending", "physic", "mentality_aggression" ,"mentality_interceptions" , "mentality_positioning", "mentality_vision", "mentality_penalties"))      #on retire les variables qu'on juge redondantes ou "néfastes" (vides)
-#on pourrait faire na.omit, mais il y a un risque chaque ligne contienne des données manquantes, on vérifie
-head(fifa_clean)
+
+```{r affichage données}
+head(fifa)
+glimpse(fifa)
+summary(fifa)
+#petite vue d'ensemble des données (glimpse) avec un résumé rapide de chaque variable (summary) 
 ```
+Explication des données :
 
 ```{r affichage données}
 head(fifa_clean)    #affiche les six premières lignes
