@@ -55,3 +55,36 @@ fifa_clean %>%                   #on part de l'intégralité de la base de donn�
   summary() %>%                 #cette fonction calcule des données essentielles pour comprendre la variable, que l'on exploitera plus bas
   kable()                       #et enfin, on met bien en forme avec kable, qui nous fait un tableau propre
 ```
+
+```{r}
+var <- fifa_clean %>% 
+  pull(overall) %>%        #ça sélectionne la colonne overall, et la différence avec pull, c'est que ça sélectionne que les données, pas les données en format data frame, ce qui permet d'effectuer des calculs ensuite
+  var()                    #je complète les données du tableaux avec la variance et l'écart type en dessous
+cat(sprintf("La variance de overall est %.2f points. ", var))          #cat permet d'écrire du texte de plusieurs types différents et sprintf permet de controler la décimale, c'est pratique pour la variance et l'écart type
+
+sd <- fifa_clean %>% 
+  pull(overall) %>% 
+  sd()
+cat(sprintf("L'écart-type de overall est %.2f points. ", sd))
+```
+#faire interprétation
+  On observe dans un premier temps, sur le tableau, des statistiques très équilibrés. D'une part, la médiane correspond à l'exact entre deux des valeurs minimum et maximum, et d'autre part, elle est quasiment identique à la moyenne. Ces données laissent présager une densité symétrique. Ensuite, autour de cette moyenne, l'écart-type de 5,64 points permettent d'identifier une intervalle dans laquelle se trouveront la plupart des données, entre approximativement 70 et 80. 
+  On formulera des premières interprétations une fois que nous auront observés la densité, mais avant ça, nous observons l'histogramme de la variable overall.
+
+
+```{r}
+#On observe d'abord les histogrammes "bruts", avec les effectifs en ordonnée, en respectant la règle de Sturges pour le nombre de bins
+h13 <- fifa_clean %>% 
+  ggplot(aes(x = overall)) +          #on fait une figure avec les valeurs de la variable overall en ordonnée, on aura pas besoin de choisir de variable pour l'axe des ordonnées car ce sera automatiquement le nombre d'effectif de chaque donnée de overall
+  geom_histogram(bins = 13,            #on choisit donc 13 bins d'après la règle de Sturges
+                 color = "red",      #ça choit la couleur des contours de chaque barre
+                 fill = "brown3") +   #ça choisit la couleur de l'intérieur de chaque barre
+  labs(                                 #labs sert à éditer tous les noms du graphique (titre, sous-titres,titre variables, ...)
+    title = "Distribution des notes overall",
+    subtitle = "Histogramme du overall avec bins = 13",
+    x = "Overall",
+    y = "Effectifs"
+  ) +
+  theme_minimal()                    #le thème correspond davantage à l'esthétique du "cadre" du graphique, on choisit notamment le theme_minimal pour avoir un fond blanc (plutôt que gris) et le cadrillage plus discret
+h13              #on affiche simplement le graphique
+```
