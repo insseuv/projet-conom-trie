@@ -464,4 +464,103 @@ fviz_pca_ind(ACP,
              pointsize = 2,       
              title = "Nuage des joueuses en fonction de physic dans le plan PC1 × PC2")
 ```
-  Enfin, le nuage de points d physic et quasiment identique que celui de defending, ce qui est logique au vu de leur dépendance très forte.
+  Enfin, le nuage de points de physic et quasiment identique que celui de defending, ce qui est logique au vu de leur dépendance très forte.
+```{r}
+#On ajoute ici une variable qui désigne le nombre de fois qu'apparaît un motif dans le tableau mais il faut retravailler cette partie pcq elle est très mal codé
+fifa <- fifa %>%
+  mutate(S = 0)
+
+fifa_clean <- fifa %>%
+  filter(!is.na(niveau_tir))
+
+n = dim(fifa_clean)[1]
+p = dim(fifa_clean)[2]
+
+
+for(i in 1:n){
+  if(fifa_clean[i, p] == 'Très bonne tireuse'){
+    fifa_clean[i, p-1] = 21
+  } 
+  if(fifa_clean[i, p] == 'Bonne tireuse'){
+    fifa_clean[i, p-1] = 82
+  } 
+  if(fifa_clean[i, p] == 'Tireuse moyenne'){
+    fifa_clean[i, p-1] = 42
+  }
+  if(fifa_clean[i, p] == 'Mauvaise tireuse'){
+    fifa_clean[i, p-1] = 70
+  }
+}
+
+
+# Calcul de la pondération, somme des parties jouées par motif d'usage
+tableau_tir <- tapply(
+  fifa_clean$S, # vecteur des parties jouées
+  fifa_clean$niveau_tir, # facteur Health selon lequel on agrège
+  sum, # fonction d’agrégation : somme
+  na.rm= TRUE # ignorer les NA
+)
+
+# On construit un data.frame pour ggplot
+dataframe_niveau_tir <- data.frame(
+  Niveau_tir = names(tableau_tir), # motifs d'utilisation
+  TotalDesNiveauTir = as.numeric(tableau_tir) #somme des G_played par modalité
+)
+# Calcul des pourcentages pondérés
+dataframe_niveau_tir$Percent <- dataframe_niveau_tir$TotalDesNiveauTir / sum(dataframe_niveau_tir$TotalDesNiveauTir) * 100 
+# Percent contient la part (en %) de chaque catégorie
+
+# Réalisation du diagramme en barres
+ggplot(dataframe_niveau_tir,aes(x=Niveau_tir,y=Percent, fill=Niveau_tir)) +
+  geom_col(color="white",width=0.7)+ # barres pleines, bordures blanches
+  scale_y_continuous(
+  labels=function(x)paste0(x,"%"), # étiquette Y en pourcentages
+  expand=c(0,0) # axe commence à 0
+  ) +
+  labs(
+    title = "Répartition pondérée des différents niveau de tir (en %)",
+    x     = "Niveau de Tir",
+    y     = "Pourcentage pondéré"
+  ) +
+  scale_fill_manual(values = c(
+    "Très bonne tireuse" = "darkred",
+    "Bonne tireuse" = "darkorange",
+    "Tireuse moyenne" = "indianred3",
+    "Mauvaise tireuse" = "darkgoldenrod"
+  )) +
+  theme_minimal()+ #thème épuré
+  theme(legend.position="none")
+```
+Tableau de contingence entre la variable du poste et la variable du niveau de tir
+```{r}
+fifa_clean%>%filter(!is.na(niveau_tir)) %>%
+  filter(!is.na(poste_quali)) %>%
+  group_by(poste_quali,niveau_tir) %>%#          on crée Effectif en sommant les parties jouées et en regroupant selon le poste et le niveau de tir
+  summarise(Effectif = sum(S)) %>%
+  group_by(poste_quali) %>%          #afin d'obtenir des pourcentages,on a besoin de calculer l'effectif total selon le poste
+#(le nombre de parties jouées par Role)
+  mutate(n_tot_Poste=sum(Effectif))  %>%
+  ungroup() %>%
+  group_by(poste_quali,niveau_tir) %>%
+  #on fait la colonne avec les pourcentages avec 2 chiffres après la virgule
+  summarise(pourcentage=round(100*Effectif/n_tot_Poste,digits=2)) %>%
+#on met le tableau sous le bon format (Niveau de tir en colonne)
+  pivot_wider(names_from = niveau_tir, values_from = pourcentage) %>%
+  knitr::kable("markdown")        #forme"jolie"du tableau
+```
+On observe bien ici un lien entre la faculté de tir et le poste des joueuses. Les attaquantes sont dans la majorité des ca de bonnes tireuses, car plus amenées à marquer. Les défenseuses quant à elle, n'ayant pas ce besoin se retrouve avec des facultés de tir plus faible.
+
+Représentation graphique
+```{r}
+ggplot(fifa_clean, aes(x = poste_quali, fill = niveau_tir)) +
+  geom_bar(position = "fill") +
+  scale_fill_manual(values = c(
+    "Très bonne tireuse" = "darkred",
+    "Bonne tireuse" = "darkorange",
+    "Tireuse moyenne" = "indianred3",
+    "Mauvaise tireuse" = "darkgoldenrod"
+  ))
+  theme_minimal()
+```
+
+La  représentation graphique du tableau de contingence nous permet d'observer ces différences entre les différents postes.
