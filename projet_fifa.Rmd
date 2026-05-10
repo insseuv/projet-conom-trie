@@ -232,3 +232,91 @@ ggplot(dataframe_poste,aes(x=Poste,y=Percent, fill=Poste)) +
 
 summary(modele_reg_linéaire) #Aperçu de la régression linéaire
 ```
+Analyse entre deux variables quantitatives. Nous allons ici voir si il y a un lien linéaire entre la note de défense et la note de physique.
+
+
+```{r}
+fifa$defending <- as.numeric(fifa$defending) # conversion de la colonne defending en numérique
+fifa$physic <- as.numeric(fifa$physic) # conversion de la colonne physic en numérique
+```
+
+```{r}
+fifa_rg <- na.omit(fifa[c("physic", "defending","player_positions")]) #On enlève les valeurs manquantes 
+
+```
+
+```{r}
+# Nuage de points
+# initialise le graphique avec la défense en absices et le physique en ordonnées
+ggplot(fifa_rg, aes(x = defending, y = physic)) +
+  geom_point(alpha = 0.4, size = 1.5, color = "darkorange") +
+  labs(
+  title = "Nuage de points : la note physique en fonction de la note de défense",
+  x = "poids en kg",
+  y = "note physique sur 100"
+# ajoute les points semi-transparents
+  ) +
+  theme_minimal() # applique un thème épuré
+```
+```{r}
+modele_reg_linéaire <- lm(formula = physic ~ defending, data = fifa_rg) # On effectue la régression linéaire
+```
+
+```{r}
+summary(modele_reg_linéaire) #Aperçu de la régression linéaire
+```
+Pour les coefficients de notre droite, on aurait ˆa = 0.24 et ˆ b = 56.04. Notre p-value est très faible ( < 2e-16). On rejette donc H0, l’hypothèse disant que la note de défense n’a pas d’effet linéaire sur la note physique, c’est-à-dire, on suppose que
+la défense a un effet linéaire sur le physique des joueuses.
+
+Par ailleurs, le modèle produit un R2 = 0.36 > 0.8. Notre modèle n'est donc pas très convaincant. Cela est compréhensible car d'autres paramètres pourrait expliquer la note de physique, le poids par exemple.
+
+Résidus 
+```{r}
+# Préparation des données et ajustement du modèle CS.M Gd.M
+
+fifa$defending <- as.numeric(fifa$defending)      # conversion de la colonne defending en numérique
+fifa$physic <- as.numeric(fifa$physic)            # conversion de la colonne physic numérique
+fifa_rg <- na.omit(fifa[c("physic", "defending")]) # On enlève les valeurs manquantes
+modele_reg_linéaire <- lm(formula = physic ~ defending, data = fifa_rg)
+
+# Génération du tableau de diagnostics
+
+diag <- augment(modele_reg_linéaire)
+
+# Résidus / valeurs ajustées (linéarité & homoscédasticité)
+
+
+
+res <- residuals(modele_reg_linéaire) # Vecteur des résidus
+plot(fitted(modele_reg_linéaire), res,
+xlab = "Valeurs ajustées",
+ylab = "Résidus")
+abline(h = 0, col = "red")
+```
+Analyse : Ici l'homoscédasticité est discutable. En effet, pour des valeurs faibles de note physique, les résidus sont plus élevés que pour des valeurs fortes de note physique. On en conclut qu'une joueuse avec une faible note physique peut tout de même être une bonne défenseuse, mais qu'une joueuse ayant une bonne note physique est assez surement une bonne défenseuse.
+
+Historgramme des résidus
+```{r}
+ggplot(data.frame(res), aes(x=res)) +
+labs(title = "Histogramme des résidus",
+x = "Résidus",
+y = "Nombre d'occurences") +
+geom_histogram(bins = 10, color = "darkorange", fill = "indianred3")
+```
+paraît relativement élevée. 
+
+QQ plot des résidus 
+```{r}
+ggplot(diag, aes(sample = .std.resid)) +
+  stat_qq(color = "darkorange", size = 1.2, alpha = 0.4) +
+  stat_qq_line(color = "darkred") +
+  labs(
+    title = "2. QQ-plot des résidus standardisés",
+    x = "Quantiles théoriques",
+    y = "Quantiles observés"
+  ) +
+  theme_minimal()
+```
+Le QQ-plot complète ce que nous avons vu sur l'histogramme : on n'est tout de même pas si éloigné
+d'une loi normale, avec une forte ressemblance autour de l'espérance, mais des écarts pour les
+valeurs les plus éloignées de la variance.
