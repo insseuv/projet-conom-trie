@@ -115,3 +115,108 @@ h13 <- fifa_clean %>%
   theme_minimal()                    #le thème correspond davantage à l'esthétique du "cadre" du graphique, on choisit notamment le theme_minimal pour avoir un fond blanc (plutôt que gris) et le cadrillage plus discret
 h13              #on affiche simplement le graphique
 ```
+Analyse d'une variable qualitative
+
+Nous allons maintenant passer à l'analyse d'une variable qualitative. Nous nous intéresserons dans cette partie à la variable initialement nommé "player_positions" qui désigne le ou les postes auquel chaque joueuse peut jouer. 
+
+
+
+```{r}
+#Ici on recode la variable pour qu'on puisse l'analyser qualitativement
+
+fifa <- fifa %>%
+  mutate(poste_unique = str_extract(player_positions, "^[^,]+")) #Ici on attribue un unique poste à chaque joueuese, en prenant toutes les caractères avant la première virgule de la chaîne de caractère qui représente les différents postes de chaque joueuse
+
+fifa <- fifa %>%
+  mutate(poste_quali = case_when(
+    poste_unique %in% c("ST", "CF", "LF", "RF") ~ "Attaquante",
+    
+    poste_unique %in% c("CAM", "CM", "CDM", "LM", "RM") ~ "Milieu",
+    
+    poste_unique %in% c("CB", "LB", "RB", "LWB", "RWB") ~ "Défenseure",
+    
+    poste_unique == "GK" ~ "Gardienne",
+    
+    TRUE ~ NA_character_
+    )) #Ici on recode la variable pour qu'il n'y ait pls que 4 modalités différentes, afin que l'analyse ne soit pas trop lourde. 
+
+```
+
+
+
+
+
+
+```{r} 
+tableau <- table(fifa$poste_quali)
+res <- data.frame(
+  Motif = names(tableau),
+  Effectif = as.integer(tableau),
+  Pourcentage = round(100 * as.integer(tableau) / sum(tableau), 1)
+)
+
+kable(res, caption = "Distribution de la variable Poste unique")
+
+```
+
+On va maintenant représenter cette variable sous la forme d'un diagramme en barre. 
+
+```{r}
+#On ajoute ici une variable qui désigne le nombre de fois qu'apparaît un motif dans le tableau mais il faut retravailler cette partie pcq elle est très mal codé
+fifa <- fifa %>%
+  mutate(S = 0)
+
+fifa_clean <- fifa %>%
+  filter(!is.na(poste_quali))
+
+n = dim(fifa_clean)[1]
+p = dim(fifa_clean)[2]
+
+for(i in 1:n){
+  if(fifa_clean[i, p-1] == 'Attaquante'){
+    fifa_clean[i, p] = 45
+  } 
+  if(fifa_clean[i, p-1] == 'Milieu'){
+    fifa_clean[i, p] = 88
+  } 
+  if(fifa_clean[i, p-1] == 'Défenseure'){
+    fifa_clean[i, p] = 78
+  }
+  if(fifa_clean[i, p-1] == 'Gardienne'){
+    fifa_clean[i, p] = 33
+  }
+}
+
+
+# Calcul de la pondération, somme des parties jouées par motif d'usage
+tableau_poste <- tapply(
+  fifa_clean$S, # vecteur des parties jouées
+  fifa_clean$poste_quali, # facteur Health selon lequel on agrège
+  sum, # fonction d’agrégation : somme
+  na.rm= TRUE # ignorer les NA
+)
+
+# On construit un data.frame pour ggplot
+dataframe_poste <- data.frame(
+  Poste = names(tableau_poste), # motifs d'utilisation
+  TotalDesPostes = as.numeric(tableau_poste) #somme des G_played par modalité
+)
+# Calcul des pourcentages pondérés
+dataframe_poste$Percent <- dataframe_poste$TotalDesPostes / sum(dataframe_poste$TotalDesPostes) * 100 
+# Percent contient la part (en %) de chaque catégorie
+
+# Réalisation du diagramme en barres
+ggplot(dataframe_poste,aes(x=Poste,y=Percent, fill=Poste)) +
+  geom_col(color="white",width=0.7)+ # barres pleines, bordures blanches
+  scale_y_continuous(
+  labels=function(x)paste0(x,"%"), # étiquette Y en pourcentages
+  expand=c(0,0) # axe commence à 0
+  ) +
+  labs(
+    title = "Répartition pondérée des différents postes (en %)",
+    x     = "Poste",
+    y     = "Pourcentage pondéré"
+  ) +
+  theme_minimal()+ #thème épuré
+  theme(legend.position="none")
+```
