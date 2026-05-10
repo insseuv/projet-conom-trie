@@ -228,3 +228,40 @@ ggplot(dataframe_poste,aes(x=Poste,y=Percent, fill=Poste)) +
   theme_minimal()+ #thème épuré
   theme(legend.position="none")
 ```
+```{r}
+fifa_temp <- fifa %>%
+  select(attacking_heading_accuracy, height_cm, player_positions)
+fifa_temp
+```
+
+
+```{r}
+fifa$attacking_heading_accuracy <- as.numeric(fifa$attacking_heading_accuracy) # conversion de la colonne CS.M en numérique
+fifa$height_cm <- as.numeric(fifa$height_cm) # conversion de la colonne Gd.M en numérique
+```
+
+```{r}
+fifa_rg <- na.omit(fifa[c("height_cm", "attacking_heading_accuracy","player_positions")])
+fifa_rg <- fifa_rg %>%
+  filter(! player_positions == "GK")
+```
+
+```{r}
+# Nuage de points
+# initialise le graphique avec le poids en absices et la note du physique en ordonnées
+ggplot(fifa_rg, aes(x = height_cm, y = attacking_heading_accuracy)) +
+  geom_point(alpha = 0.4, size = 1.5) +
+  labs(
+  title = "Nuage de points : la note physique en fonction de la note de défense",
+  x = "poids en kg",
+  y = "note physique sur 100"
+# ajoute les points semi-transparents
+  ) +
+  theme_minimal() # applique un thème épuré
+```{r}
+modele_reg_linéaire <- lm(formula = attacking_heading_accuracy ~ height_cm, data = fifa_rg) # On effectue la régression linéaire
+```
+
+```{r}
+summary(modele_reg_linéaire) #Aperçu de la régression linéaire
+```
