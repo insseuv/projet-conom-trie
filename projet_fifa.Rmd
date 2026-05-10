@@ -64,20 +64,12 @@ fifa <- fifa %>%
 
 
 ```{r affichage données}
-head(fifa)
-glimpse(fifa)
-summary(fifa)
+head(fifa) #affiche les six premières lignes
+glimpse(fifa)  #affiche les données de chaque variable en condensé
+summary(fifa) #fait un résumé de chaque variable
 #petite vue d'ensemble des données (glimpse) avec un résumé rapide de chaque variable (summary) 
 ```
 Explication des données :
-
-```{r affichage données}
-head(fifa_clean)    #affiche les six premières lignes
-glimpse(fifa)       #affiche les données de chaque variable en condensé
-summary(fifa)       #fait un résumé de chaque variable
-spec(fifa)
-#petite vue d'ensemble des données (glimpse) avec un résumé rapide de chaque variable (summary) 
-```
 
 I - Analyse univariée d'une variable quantitative continue : overall
 
