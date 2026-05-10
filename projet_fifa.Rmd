@@ -320,3 +320,148 @@ ggplot(diag, aes(sample = .std.resid)) +
 Le QQ-plot complète ce que nous avons vu sur l'histogramme : on n'est tout de même pas si éloigné
 d'une loi normale, avec une forte ressemblance autour de l'espérance, mais des écarts pour les
 valeurs les plus éloignées de la variance.
+
+
+VI - ACP réduite des caractéristiques principales cartes fifa
+
+  Pour procéder à une analyse en composantes principales, nous devons tout d'abord choisir des variables. Nous décidons ici de garder les six caractéristiques principales affichées directement sur la carte de chaque joueuse, car d'une part, elles donnent un profil complet de chaque joueuse, et d'autre part, elles risquent assez naturellement d'être corrélées. Voyons cela tout d'abord avec la matrice des corrélations.
+
+```{r}
+fifa_ACP <- fifa_clean %>%
+  na.omit() %>%           #on craint que les lignes retirées enlèvent un type précis de joueur mais il n'y a pas le choix
+  select(c("pace","shooting", "dribbling", "passing", "defending", "physic")) #c'est bon, la base est "nettoyée" et prête à être utilisée
+```
+
+```{r}
+fifa_ACP %>%
+  correlate(use = "pairwise.complete.obs") %>%
+  rplot() +
+  labs(title = "Matrice des correlations entre les caractéristiques des joueuses") +
+  theme_minimal()
+```
+Nous observons donc bien des corrélations, et plus précisemment des corrélations positives relativement fortes entre les qualités de dribbleuse, de passeuse et le tir, ce qui forme un profil d'attaque, puis entre les qualités de défense et le physique, ce qui forme un second profil plutôt défensif, avec des variables qui sont justement corrélées négativement avec les variables d'attaque. Nous allons étudier s'il existe en effet deux profils de joueurs qui se dégagentn de l'ACP.
+
+```{r}
+ACP <- fifa_ACP %>% 
+  prcomp(scale=TRUE)
+
+summary(ACP)
+```
+```{r}
+var_exp <- tidy(ACP, matrix = "pcs")
+
+var_exp %>%
+  kable(digits = 6,
+        col.names = c("PC", "Ecart-type", "% variance", "% cumule"),
+        caption = "Variance expliquée par composante")   
+```
+  Ces premiers résultats sont très positifs pour la représentation à venir car lorsque l'on utilise la fonction prcomp pour une ACP, on garde généralement les composantes princpales dont la standard deviation est supérieure à 1 et ici il y en a deux, ce qui permettre une représentation graphique en 2D très pratique. On remarque aussi des valeurs de variance cumulées qui augmentent rapidement, ce qui signifie que certains profils clairs de joueurs se dégagent.
+
+```{r}
+var_exp %>%
+  ggplot(aes(x = PC)) +            #la variable PC est dans un dataframe qui n'est pas afficher avant, mais qui correspond au yableau produit par la fonction tidy plus tôt mais sans le renommage effectué dans un second temps, c'est la même chose pour la variable cumulative en dessous
+  geom_col(aes(y = percent), fill = "aquamarine4", alpha = 0.85, colour = "black") +
+  geom_line(aes(y = cumulative), colour = "indianred3", linewidth = 1.2) +
+  geom_point(aes(y = cumulative), colour = "indianred3", size = 3) +
+  geom_hline(yintercept = 0.75, linetype = "dashed", colour = "grey15") +   #au vu des résultats précédents, on choisit volontairement le seuil de 75% de variance cumulée car il nous permet de nous contenter des deux premières composantes principales tout en étant très satisfaisant
+  scale_x_continuous(breaks = 1:5) +       #très pratique esthétiquement, permet de controler les valeurs sur l'axe des ordonnée à titre indicatif, pour mieux se repérer
+  labs(title = "Screeplot-ACP sur les covariables fifa",
+       subtitle = "Barres : variance individuelle | Courbe rouge : variance cumulée",
+       x = "Composante principale", y = "Part de variance") +
+  theme_minimal()
+```
+  Nous obtenons des résultats cohérents avec nos précédentes observations, la variance individuelle est très importante pour la première composante principale, puis deux fois moins mais quand même importante pour la deuxième, avec presque 25%, et enfin plus du tout importante pour les dernière. Ca se traduit dans la courbe de variance cumulée, avec un applatissement dès la deuxième composante principale atteinte, lorsque le seuil des 75% de variancee cumulée, représenté par la ligne en pointillée, est atteinte.
+  
+  Maintenant que nous avons ces premières observation, il nous faut pousser notre analyse et chercher quelles variables contribuent le plus à chaque composantes principales.
+```{r}
+loadings_long <- tidy(ACP, matrix = "v")   #cette fonction est primordial, car elle donne les coordonnées des variables sur chaque composante principale
+
+loadings_wide <- loadings_long %>%
+  pivot_wider(names_from = PC,            #pivot_wider nous permet de passer d'un tableau difficileùent exploitable à un table dans lequel les coordonnées de chaque variables seront toutes sur la même ligne, avec les PC en colonne, elle permet même de renommer les colonnes, ici par exeple, on ajoute un préfixe car ça facilitera la compréhension du code dans les prochains chunk
+              values_from = value,
+              names_prefix = "PC")
+
+loadings_wide %>%
+  kable(digits = 6,                     #on les laisse toutes pour analyser les différences entre des composantes principales à forte variance expliquée et d'autres avec une faible variance expliquée
+        caption = "Coordonnées des variables sur chaque PC")   #caption sert à donner un titre au graphique
+```
+  Ces premiers résultats sont très parlants. En effet, les variables offensives (vitesse, dribble, passe, tir) sont très significativement représentées dans la premières composante principale (coordonnées proches de -1, le signe n'a aucun sens ici, tout ce que nous disent ces valeurs, c'est que la première composante principale oppose les joueuses offensives et les joueuses défensives), et plus du tout dans la deuxième (valeurs proches de 0). En contrepartie, on observe l'exact opposée pour les variables défensives (défense et physique). Il semble donc qu'on retrouve les profils d'attaque et de défense dont on avait fait l'hypothèse plus tôt.
+  Ce qui est intéressant à relever aussi, c'est que pour les dernières composantes principales, aucune convergence ne ressort, les coordonnées sont soit aux alentours de 0.5, donc peu significatives, soit pas du tout significatives, et les rassemblements entre variables à peu près significatives n'ont aucun sens. Par exemple, la PC5 est positivement corrélée aux qualités de passeuse, mais négativement corrélée aux qualités de défenseuse et de tireuse, donc ça semble correspondre aux milieux de terrains, mais en même temps la vitesse ne compte pas alors que les milieux de terrain sont censées être rapide car elles font la jonction entre l'attaque et la défense donc elles doivent vite repartir en attaque ou en défense.
+  
+  Nous allons désormais observer un graphique qui représente ces corrélations, mais que pour les deux premières composantes principales, il s'agit du cercle des corrélations.
+
+
+
+```{r}
+fviz_pca_var(ACP,                    #cette fonction trace directement le cercle des corrélations
+             col.var = "cos2",          #permet de colorer chaque point en fonction de la significativité de sa représentation
+             gradient.cols = c("darkgoldenrod1", "darkorange", "darkred"),  #permet de faire le dégradé de couleur
+             repel = TRUE,                 #ça évite que les labels se chevauchent
+             title = "Cercle des corrélations de l'ACP FIFA")
+```
+  Les résultats attendus sont bien là, deux profils sont clairement établis, l'un groupant les qualités offensives, l'autre groupant les qualités défensives, mais nous pouvons enrichir notre analyse. Tout d'abord, nous observons à partir de la gradation de couleurs les variables qui sont plus ou moins bien représentées par cette approximation en deux composantes principales, c'est à dire que certains variables sont plus ou moins bien représentés par la répartition en deux composantes principales qui correspondent à l'attaque et la défense. Le résultat général est que toutes les variables sont relativement bien représentées, mais il est pertinent d'ajouter que dribbling s'inscrit le mieux dans ce découpage en deux composantes, c'est la variable la plus significativement représentée, tandis que pace est la moins bien représentée. 
+  Ce graphique revèle plus clairement les liens entre variales de chaque profil. En effet, plus deux flèches ont une direction similaire, plus elles sont dépendantes. On a donc le constant que au sein du profil d'attaque, trois variables sont très dépendantes - dribbling, shooting, pace- tandis que passing sort légèrement du lot. Ce léger écart provient davantage d'un rapprochement de passing avec un profil défensif que avec l'éloignement d'un profil d'attaque. Effectivement, les qualités de passeuse sont aussi utiles à une défenseuse qu'à une attquante. C'est d'ailleurs pour cela que passing semble à l'exact "nord-ouest" de ce cercle, à 45° de l'axe des abscisses aussi bien que des ordonnées. Enfin, les variables du profil défensif sont bien présentes et corrélées à l'axe des ordonnées (PC2) et négativement corrélées avec PC1. 
+
+Maintenant que nous avons analysé en profondeur les liens entre les composantes principales et les variables, nous allons vérifier nos résultats en observant les nuages de points sur un plan avec PC1 en abscisse et PC2 en ordonnée, et nous pourrons conclure, si l'emplacement de chaque joueuse est bien déterminé par leur donnée pour chaque graphique. 
+ 
+```{r}
+fviz_pca_ind(ACP,     #cette fonction place les points de chaque joueuse en fonction de la variable sélectionnée ci-dessus, sur le plan PC1 x PC2
+             col.ind = fifa_ACP$pace,          #choix de la variable, ici pace pour commencer
+             gradient.cols = c("deepskyblue", "chartreuse", "red"),       #on choisit les couleurs pour le dégradé et on sélectionne trois couleurs vives et différentes pour bien voir les différences
+             geom = "point",              #on met des points sur le graphique car au vu du nombre de joueuses, n'importe quelle donnée auraient pris trop de place
+             pointsize = 2,       #on définit une taille de point ni trop grosse ni trop petite en tatonnant
+             title = "Nuage des joueuses en fonction de pace dans le plan PC1 × PC2")
+```
+
+Avec la variable pace, le dégradé en fonction de l'axe PC1 est clair.
+  
+```{r}
+fviz_pca_ind(ACP,    
+             col.ind = fifa_ACP$shooting,          
+             gradient.cols = c("deepskyblue", "chartreuse", "red"),       
+             geom = "point",            
+             pointsize = 2,       
+             title = "Nuage des joueuses en fonction de shooting dans le plan PC1 × PC2")
+```
+
+Avec la variable shooting, le dégradé est encore plus clair, donc la corrélation avec PC1 est encore plus marquante, ce qui est logique, c'est la variable la plus déterminante pour un attaquant, même plus que dribble, car certains attaquants ne sont pas excellent en dribble, mais tous sont bon au tir.
+  
+```{r}
+fviz_pca_ind(ACP,    
+             col.ind = fifa_ACP$dribbling,          
+             gradient.cols = c("deepskyblue", "chartreuse", "red"),       
+             geom = "point",            
+             pointsize = 2,       
+             title = "Nuage des joueuses en fonction de dribbling dans le plan PC1 × PC2")
+```
+
+La variable dribbling aussi est nette, avec une légère orientation sur un axe sud-est vers nord-ouest, ce qui marque une très légère corrélation positive avec l'axe PC2.
+
+```{r}
+fviz_pca_ind(ACP,    
+             col.ind = fifa_ACP$passing,          
+             gradient.cols = c("deepskyblue", "chartreuse", "red"),       
+             geom = "point",            
+             pointsize = 2,       
+             title = "Nuage des joueuses en fonction de passing dans le plan PC1 × PC2")
+```
+  La variable passing est très intéressante car on observe la direction sud-est nord-ouest le plus nettement parmi les autres nuages de points, et c'est dû à son emplacement sur le cercle des corrélations, elle était presque parfaitement à 45° de chaque axe.
+  
+```{r}
+fviz_pca_ind(ACP,    
+             col.ind = fifa_ACP$defending,          
+             gradient.cols = c("deepskyblue", "chartreuse", "red"),       
+             geom = "point",            
+             pointsize = 2,       
+             title = "Nuage des joueuses en fonction de defending dans le plan PC1 × PC2")
+```
+  A l'opposé de passing, comme sur le cercle des corrélations, la variable defending a un nuage de point qui suit la direction sud-ouest vers nord-ouest.
+```{r}
+fviz_pca_ind(ACP,    
+             col.ind = fifa_ACP$physic,          
+             gradient.cols = c("deepskyblue", "chartreuse", "red"),       
+             geom = "point",            
+             pointsize = 2,       
+             title = "Nuage des joueuses en fonction de physic dans le plan PC1 × PC2")
+```
+  Enfin, le nuage de points d physic et quasiment identique que celui de defending, ce qui est logique au vu de leur dépendance très forte.
