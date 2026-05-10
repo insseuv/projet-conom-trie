@@ -1,6 +1,8 @@
 ---
-title: "projet fifa"
-output: html_document
+title: "Analyse de données sur les joueuses FIFA 16-22"
+output:
+  html_document: default
+  pdf_document: default
 date: "2026-04-27"
 ---
 
@@ -19,9 +21,10 @@ p_load(factoextra)
 p_load(cluster)
 p_load(grid)
 p_load(png)
+p_load(tinytex)
 ```
 
-*Introduction*
+**Introduction**
 
 *FIFA*, anciennement FIFA Football une série de jeux vidéo de football développée et éditée annuellement par Electronic Arts depuis 1993. Le but de ce jeu est comme dans la vraie vie de jouer au foot, il est possible d'incarner de vraie équipe ou même de jouer en ligne en créant sa propre équipé avec des vrais/es joueurs/ses.
 
@@ -38,7 +41,7 @@ grid.raster(img, width = 0.7)
 Au football, chaque équipe est composée de 11 joueurs/ses séparés en 3 blocs :
  - La défense
  - Les milieux
- -L'attaque
+ - L'attaque
 Et enfin le gardien, qu'on ne va pas traiter ici.
 
 Notre objectif ici est d'analyser comment les données sont réparties et pourquoi, et d'analyser sportivement les attributions des caractéristiques des joueuses.
@@ -64,44 +67,49 @@ fifa <- fifa %>%
 
 
 ```{r affichage données}
-head(fifa) #affiche les six premières lignes
-glimpse(fifa)  #affiche les données de chaque variable en condensé
-summary(fifa) #fait un résumé de chaque variable
+head(fifa)
+glimpse(fifa)
+summary(fifa)
 #petite vue d'ensemble des données (glimpse) avec un résumé rapide de chaque variable (summary) 
 ```
 Explication des données :
 
-I - Analyse univariée d'une variable quantitative continue : overall
+
+
+**I - Analyse univariée d'une variable quantitative continue : overall**
+
+
+
 
 Nous allons faire une analyse de overall, qui est une note générale de chaque joueuse, en étudiant sa distribution.
 
-```{r}
-fifa_clean %>%                   #on part de l'intégralité de la base de données
+```{r analyse overall}
+fifa %>%                   #on part de l'intégralité de la base de données
   select(overall) %>%              #on garde unique la colonne qui correspond aux notes overall
   filter(!is.na(overall)) %>%      #on retire les possibles données manquantes, bien que ce soit peu probable puisqu'on a déjà fait na.omit en nettoyant la base de données
   summary() %>%                 #cette fonction calcule des données essentielles pour comprendre la variable, que l'on exploitera plus bas
   kable()                       #et enfin, on met bien en forme avec kable, qui nous fait un tableau propre
 ```
 
-```{r}
-var <- fifa_clean %>% 
+```{r variance overall}
+var <- fifa %>% 
   pull(overall) %>%        #ça sélectionne la colonne overall, et la différence avec pull, c'est que ça sélectionne que les données, pas les données en format data frame, ce qui permet d'effectuer des calculs ensuite
   var()                    #je complète les données du tableaux avec la variance et l'écart type en dessous
 cat(sprintf("La variance de overall est %.2f points. ", var))          #cat permet d'écrire du texte de plusieurs types différents et sprintf permet de controler la décimale, c'est pratique pour la variance et l'écart type
 
-sd <- fifa_clean %>% 
+sd <- fifa %>% 
   pull(overall) %>% 
   sd()
 cat(sprintf("L'écart-type de overall est %.2f points. ", sd))
 ```
-#faire interprétation
+
   On observe dans un premier temps, sur le tableau, des statistiques très équilibrés. D'une part, la médiane correspond à l'exact entre deux des valeurs minimum et maximum, et d'autre part, elle est quasiment identique à la moyenne. Ces données laissent présager une densité symétrique. Ensuite, autour de cette moyenne, l'écart-type de 5,64 points permettent d'identifier une intervalle dans laquelle se trouveront la plupart des données, entre approximativement 70 et 80. 
   On formulera des premières interprétations une fois que nous auront observés la densité, mais avant ça, nous observons l'histogramme de la variable overall.
 
 
-```{r}
+```{r historigramme}
 #On observe d'abord les histogrammes "bruts", avec les effectifs en ordonnée, en respectant la règle de Sturges pour le nombre de bins
-h13 <- fifa_clean %>% 
+h13 <- fifa %>% 
   ggplot(aes(x = overall)) +          #on fait une figure avec les valeurs de la variable overall en ordonnée, on aura pas besoin de choisir de variable pour l'axe des ordonnées car ce sera automatiquement le nombre d'effectif de chaque donnée de overall
   geom_histogram(bins = 13,            #on choisit donc 13 bins d'après la règle de Sturges
                  color = "red",      #ça choit la couleur des contours de chaque barre
@@ -115,7 +123,7 @@ h13 <- fifa_clean %>%
   theme_minimal()                    #le thème correspond davantage à l'esthétique du "cadre" du graphique, on choisit notamment le theme_minimal pour avoir un fond blanc (plutôt que gris) et le cadrillage plus discret
 h13              #on affiche simplement le graphique
 ```
-Analyse d'une variable qualitative
+**Analyse d'une variable qualitative**
 
 Nous allons maintenant passer à l'analyse d'une variable qualitative. Nous nous intéresserons dans cette partie à la variable initialement nommé "player_positions" qui désigne le ou les postes auquel chaque joueuse peut jouer. 
 
