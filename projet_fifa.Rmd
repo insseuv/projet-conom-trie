@@ -564,3 +564,266 @@ ggplot(fifa_clean, aes(x = poste_quali, fill = niveau_tir)) +
 ```
 
 La  représentation graphique du tableau de contingence nous permet d'observer ces différences entre les différents postes.
+
+
+```{r}
+head(fifa, 8)
+```
+
+```{r file fusion du .xlsx}
+
+
+fifa <- fifa %>%
+  select(c( "long_name", "player_positions", "overall", "potential", "age", "height_cm", "weight_kg", "nationality_name", "preferred_foot", "weak_foot", "skill_moves", "preferred_foot", "weak_foot", "skill_moves","pace", "shooting", "passing", "dribbling", "defending", "physic", "mentality_aggression" ,"mentality_interceptions" , "mentality_positioning", "mentality_vision", "mentality_penalties","work_rate","attacking_heading_accuracy"))      #on retire les variables qu'on juge redondantes ou "néfastes" (vides)
+#on pourrait faire na.omit, mais il y a un risque chaque ligne contienne des données manquantes, on vérifie head(fifa)
+#Ici on sélectionne que les données qui vont nous servir
+```
+
+```{r}
+tinytex::install_tinytex()
+```
+
+Analyse d'une variable qualitative
+
+Nous allons maintenant passer à l'analyse d'une variable qualitative. Nous nous intéresserons dans cette partie à la variable initialement nommé "player_positions" qui désigne le ou les postes auquel chaque joueuse peut jouer. 
+
+
+
+```{r}
+#Ici on recode la variable pour qu'on puisse l'analyser qualitativement
+
+fifa <- fifa %>%
+  mutate(poste_unique = str_extract(player_positions, "^[^,]+")) #Ici on attribue un unique poste à chaque joueuese, en prenant toutes les caractères avant la première virgule de la chaîne de caractère qui représente les différents postes de chaque joueuse
+
+fifa <- fifa %>%
+  mutate(poste_quali = case_when(
+    poste_unique %in% c("ST", "CF", "LF", "RF") ~ "Attaquante",
+    
+    poste_unique %in% c("CAM", "CM", "CDM", "LM", "RM") ~ "Milieu",
+    
+    poste_unique %in% c("CB", "LB", "RB", "LWB", "RWB") ~ "Défenseure",
+    
+    poste_unique == "GK" ~ "Gardienne",
+    
+    TRUE ~ NA_character_
+    )) #Ici on recode la variable pour qu'il n'y ait pls que 4 modalités différentes, afin que l'analyse ne soit pas trop lourde. 
+
+```
+
+
+
+
+
+
+```{r} 
+tableau <- table(fifa$poste_quali)
+res <- data.frame(
+  Motif = names(tableau),
+  Effectif = as.integer(tableau),
+  Pourcentage = round(100 * as.integer(tableau) / sum(tableau), 1)
+)
+
+kable(res, caption = "Distribution de la variable Poste unique")
+
+```
+
+On va maintenant représenter cette variable sous la forme d'un diagramme en barre. 
+
+```{r}
+#On ajoute ici une variable qui désigne le nombre de fois qu'apparaît un motif dans le tableau mais il faut retravailler cette partie pcq elle est très mal codé
+fifa <- fifa %>%
+  mutate(S = 0)
+
+fifa_clean <- fifa %>%
+  filter(!is.na(poste_quali))
+n = dim(fifa_clean)[1]
+p = dim(fifa_clean)[2]
+
+for(i in 1:n){
+  if(fifa_clean[i, p-1] == 'Attaquante'){
+    fifa_clean[i, p] = 45
+  } 
+  if(fifa_clean[i, p-1] == 'Milieu'){
+    fifa_clean[i, p] = 88
+  } 
+  if(fifa_clean[i, p-1] == 'Défenseure'){
+    fifa_clean[i, p] = 78
+  }
+  if(fifa_clean[i, p-1] == 'Gardienne'){
+    fifa_clean[i, p] = 33
+  }
+}
+
+
+
+tab <-table(fifa$poste_quali)
+fifa_en_bar <-data.frame(
+  Poste = names(tab),
+  Count= as.integer(tab)
+  )
+
+# Calcul des pourcentages pondérés
+
+fifa_en_bar$Percent <- fifa_en_bar$Count / sum(fifa_en_bar$Count) * 100 
+
+# Percent contient la part (en %) de chaque poste
+
+# Réalisation du diagramme en barres
+ggplot(fifa_en_bar,aes(x = Poste, y = Percent, fill = Poste)) +
+  geom_col(color="white",width=0.7)+ # barres pleines, bordures blanches
+  scale_y_continuous(
+  labels=function(x)paste0(x,"%"), # étiquette Y en pourcentages
+  expand=c(0,0) # axe commence à 0
+  ) +
+  labs(
+    title = "Répartition pondérée des différents postes (en %)",
+    x     = "Poste",
+    y     = "Pourcentage pondéré"
+  ) +
+  scale_fill_manual(values = c(
+    "Attaquante" = "darkred",
+    "Milieu" = "darkorange",
+    "Défenseure" = "indianred3",
+    "Gardienne" = "darkgoldenrod"
+  )) +
+  theme_minimal()+ #thème épuré
+  theme(legend.position="none")
+```
+
+Représentation en diagramme circulaire
+```{r}
+#Préparation du data.frame des effectifs et pourcentages
+tab <-table(fifa$poste_quali)
+fifa_circulaire <-data.frame(
+  Poste = names(tab),
+  Count= as.integer(tab)
+  )
+
+fifa_circulaire$Percent<-fifa_circulaire$Count / sum(fifa_circulaire$Count) * 100
+
+#Traçage du diagramme circulaire
+
+ggplot(fifa_circulaire,aes(x="",y=Percent,fill=Poste))+
+  geom_bar(width=1,stat="identity",color="white")+ #barchart empilé
+  coord_polar(theta="y")+ #transforme en camembert
+  geom_text(aes(label=paste0(Count,"(",round(Percent,1),"%)")),
+  position=position_stack(vjust=0.5),size=3)+
+  labs(
+  title="Diagramme circulaire : Poste",
+  x= NULL, y = NULL
+  ) +
+  scale_fill_manual(values = c(
+    "Attaquante" = "darkred",
+    "Milieu" = "darkorange",
+    "Défenseure" = "indianred3",
+    "Gardienne" = "darkgoldenrod"
+  )) +
+  theme_minimal() +
+  theme(
+  axis.text = element_blank(),
+  axis.ticks = element_blank(),
+  panel.grid = element_blank(),
+  legend.title = element_blank()
+)
+```
+
+
+On va plus tard chercher à analyser le lien entre le poste des joueuses et leur faculté de tire, on va donc coder une variable quali en fonction de la note correpondante à la variable 'shooting'. 
+
+```{r}
+fifa <- fifa %>%
+  mutate(niveau_tir = case_when(
+    shooting >= 80 ~ "Très bonne tireuse",
+    shooting >= 65 ~ "Bonne tireuse",
+    shooting >= 50 ~ "Tireuse moyenne",
+    shooting < 50  ~ "Mauvaise tireuse",
+    TRUE ~ NA_character_
+  ))
+```
+
+On effectue les mêmes commandes que pour la variable du poste. 
+
+
+```{r} 
+tableau <- table(fifa$niveau_tir)
+res <- data.frame(
+  Motif = names(tableau),
+  Effectif = as.integer(tableau),
+  Pourcentage = round(100 * as.integer(tableau) / sum(tableau), 1)
+)
+
+kable(res, caption = "Distribution de la variable Poste unique")
+
+```
+
+
+
+On va maintenant représenter cette variable sous la forme d'un diagramme en barre. 
+
+
+
+
+
+```{r}
+#On ajoute ici une variable qui désigne le nombre de fois qu'apparaît un motif dans le tableau mais il faut retravailler cette partie pcq elle est très mal codé
+fifa <- fifa %>%
+  mutate(S = 0)
+
+fifa_clean <- fifa %>%
+  filter(!is.na(niveau_tir))
+
+n = dim(fifa_clean)[1]
+p = dim(fifa_clean)[2]
+
+
+for(i in 1:n){
+  if(fifa_clean[i, p] == 'Très bonne tireuse'){
+    fifa_clean[i, p-1] = 21
+  } 
+  if(fifa_clean[i, p] == 'Bonne tireuse'){
+    fifa_clean[i, p-1] = 82
+  } 
+  if(fifa_clean[i, p] == 'Tireuse moyenne'){
+    fifa_clean[i, p-1] = 42
+  }
+  if(fifa_clean[i, p] == 'Mauvaise tireuse'){
+    fifa_clean[i, p-1] = 70
+  }
+}
+
+tab <-table(fifa_clean$niveau_tir)
+Tir_en_bar <-data.frame(
+  Tir = names(tab),
+  Count= as.integer(tab)
+  )
+
+# Calcul des pourcentages pondérés
+
+Tir_en_bar$Percent <- Tir_en_bar$Count / sum(Tir_en_bar$Count) * 100 
+
+# Percent contient la part (en %) de chaque niveau de tir
+
+
+
+
+# Réalisation du diagramme en barres
+ggplot(Tir_en_bar,aes(x = Tir, y = Percent, fill = Tir)) +
+  geom_col(color="white",width=0.7)+ # barres pleines, bordures blanches
+  scale_y_continuous(
+  labels=function(x)paste0(x,"%"), # étiquette Y en pourcentages
+  expand=c(0,0) # axe commence à 0
+  ) +
+  labs(
+    title = "Répartition pondérée des différents niveau de tir (en %)",
+    x     = "Niveau de Tir",
+    y     = "Pourcentage pondéré"
+  ) +
+  scale_fill_manual(values = c(
+    "Très bonne tireuse" = "darkred",
+    "Bonne tireuse" = "darkorange",
+    "Tireuse moyenne" = "indianred3",
+    "Mauvaise tireuse" = "darkgoldenrod"
+  )) +
+  theme_minimal()+ #thème épuré
+  theme(legend.position="none")
+```
