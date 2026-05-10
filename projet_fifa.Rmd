@@ -827,3 +827,265 @@ ggplot(Tir_en_bar,aes(x = Tir, y = Percent, fill = Tir)) +
   theme_minimal()+ #thème épuré
   theme(legend.position="none")
 ```
+
+
+
+```{r}
+#la règle de Sturges date de 1924, et certains critiquent son obsolescence au delà de 200 observations, car ça cacherait trop d'informations, nous testons donc avec geom_histogram par défaut
+h30 <- fifa_clean %>% 
+  ggplot(aes(x = overall)) +
+  geom_histogram(color = "red",      
+                 fill = "brown3") +  
+  labs(                               
+    title = "Distribution des notes overall",
+    subtitle = "Histogramme du overall avec bins = 30",
+    x = "Overall",
+    y = "Effectifs"
+  ) +
+  theme_minimal()      
+h30
+```
+On observe que le premier histogramme est plus lisse, ou du moins beaucoup moins "éruptif" que le second. Il semble par ailleurs qu'on ne passe pas à coté de tant d'informations, si ce n'est trois pics à environ 70, 75 et 80. Nous garderons donc 13 comme nombre de bins.
+
+```{r}
+fifa_clean %>% 
+  ggplot(aes(x = overall)) +
+  geom_histogram(aes(y = after_stat(density)), #ici, on précise l'ordonnée avec la fonction after_stat qui permet de faire des modifications sur les effectifs bruts, par exemple en les mettant à l'échelle d'une densité
+                 bins = 13,
+                 fill = "indianred3",
+                 color = "white",        #les contours blancs évitent que le graphique soit trop chargé visuellement 
+                 alpha = 0.6) +   # alpha est très imporatant, ça controle le degré de transparence de chaque élément d'un graphique, et c'est très pratique pour manier un graphique ou plusieurs éléments se superposent, ici, l'histogramme est donc semi-transparent mais quand même deux fois plus visible que la densité, et c'est volontaire
+  geom_density(fill = "darkred",     #geom_density est la fonction qui représente réellement la densité de overall, mais la superposer à l'histogramme avec la fonction after_stat(density) permet de rendre le graphique encore plus complet
+               alpha = 0.3,       # densité transparente
+               color = "darkred",
+               size = 1) +   #ça choisit l'épaisseur du trait qui dessine la courbe la courbe
+  labs(
+    title = "Distribution des notes overall",
+    subtitle = "Histogramme et densité du overall avec bins = 10",
+    x = "Overall",
+    y = "Densité"
+  ) +
+  theme_minimal() 
+```
+On a un graphique en cloche quasiment parfaitement symétrique, que l'on pourrait comparer à une densité gaussienne, nous allons donc étudier plus en détail l'adéquation des deux variables graphiquement.
+```{r}
+fifa_clean %>% 
+  mutate(overall_cr = scale(overall)) %>%           #très important pour comparer avec loi normale centrée réduite, ça centre et réduit les valeurs overall avec un simple calcul (x-mean)/sd, sinon, on autait aussi très bien pu comparer avec un loi normale ayant la même moyenne et la même variance que overall
+  ggplot(aes(x = overall_cr)) +
+  geom_histogram(aes(y = after_stat(density)),     #il faut quand même utiliser after_stat(density) en plus d'avoir centrée et réduit, car ça ne signifie pas qu'elles sont à l'échelle d'une densité
+                 bins = 13,
+                 fill = "indianred3",
+                 color = "white",
+                 alpha = 0.6) +   
+  geom_density(fill = "darkred",
+               alpha = 0.3,       
+               color = "darkred",
+               size = 1) +
+  stat_function(fun = dnorm,
+                args = list(mean = 0, sd = 1),
+                color = "aquamarine4",            
+                linewidth = 1.2) +
+  labs(
+    title = "Distribution des notes overall",
+    subtitle = "Histogramme et densité de overall centrée réduite avec bins = 13 comparée à courbe densité normale centrée réduite",
+    x = "overall",
+    y = "Densité"
+  ) +
+  theme_minimal() 
+```
+#est ce qu'on peut conclure que c'est pareil ??
+Le test du khi ne serait pas pratique à faire ici, il faudrait découper en classe, par contre on peut effectuer un test de Kolmogorov-Smirnov pour étudier l'adéquation entre la densité de overall et celle d'une densité gaussienne, car ce test est très adapté aux grands nombres d'observations.
+```{r}
+ks.test(fifa_clean$overall, "pnorm", mean = mean(fifa_clean$overall), sd = sd(fifa_clean$overall))
+```
+  Le résultat du test est à nuancer. En effet, la p-value nous amène à clairement rejetter l'hypothèse que la distribution de overall serait une loi normale, et ce n'est pas une surprise, graphiquement, ça se voyait déjà que la densité n'était pas exactement la même. Cependant, ce qu'on observe aussi, c'est une valeur D très faible qui nous indique que l'écart entre les courbes de chaque densité est très faible, et même suffisamment pour conclure que c'est bien une approxiamation de la loi gaussienne. Nous pouvons donc conclure que la distribution de overall approche une loi gaussienne, mais que l'existence de certaines valeurs qui se répètent vraiment beaucoup (70, 75 et 80 comme nous avons vu dans l'histogramme à 30 bins) produit, voire amplifie, cette faible p-value.
+  
+  Enfin, il nous faut observer la représentation en boite à moustache de cette variable pour avoir tous les détails. En effet, nous n'aurons certainement pas de grande surprise quant à la boite à moustache, mais plutôt au niveau des valeurs aberrantes, qui "logiquement" n'existent pas, car aucune donnée ne peut être qualifiée d'aberrante ici, car chacune est donnée pour des raisons claires. Voyons cela.
+
+
+```{r}
+fifa_clean %>% 
+  ggplot(aes(x = "", y = overall)) +   #le x="" sert lorsque l'on représente une variable unique, c'est une variable vide
+  geom_boxplot(
+    fill = "aquamarine2",                # c'est la couleur de l'intérieur de la boite              
+    width = 0.6,
+    color = "aquamarine4",                # c'est la couleur du contour 
+    outlier.color = "aquamarine4",       # c'est la couleur des valeurs aberrantes
+    outlier.size = 2.5              # c'est pour grossir l'unique valeur aberrante
+  ) +
+  geom_hline(
+    aes(yintercept = mean(overall)),
+    colour = "brown2",
+    size = 1
+    ) + 
+  stat_boxplot(             #avec ggplot, ça sert à rajouter des détails, et en l'occurence, on s'en sert ici pour rajouter des barres au bout des moustaches pour rendre la boxplot plus agréable à voir
+    geom = "errorbar",           #désigne les barres au bout de la moustache
+    width = 0.2,          # largeur des petites barres
+    color = "aquamarine4",
+    size = 1
+  ) +
+  scale_x_discrete(expand = c(0.2, 0.2)) +         # pour raccourcir les bords vides
+  labs(                                        #toujours la même présentation 
+    title = "Distribution de overall",
+    subtitle = "Boîte à moustaches avec indication de la moyenne",
+    x = "",
+    y = "overall"
+  ) +
+  theme_minimal() 
+```
+Interessant, quelques valeurs aberrantes, bien que normalement elles n'ont rien d'aberrantes dans leurs significations, et aussi un écart interquartiles relativement étroit, déjà visible sur l'histogramme, autour de 76 environ. Aussi, on observe la superposition parfaite (il me semble) de la moyenne et de l'écart type, c'était visible sur la densité, bien que la légère déformation (asymétrie très légère avec une pointe de la cloche à gauche) aurait pu laisser présager un léger décalage.
+
+Finalement, nous obtenons donc 3 valeurs "aberrantes". Sur approximativement 2000 notes, c'est tout de même remarquablement peu, bien que zéro valeur aberrante ne serait pas étonnant. Par ailleurs, nous retrouvons nos observations précédentes, la moyenne quasiment superposée sur la médiane, la variance de 30 environ, et surtout l'écart-type de plus de 5, qui produit une box plot écrasée, avec un écart interquartile relativement faible.
+
+Interprétations générales de cette partie : 
+-est ce volontaire de la part des créateurs de fifa ? Faut rappeler que ces données sont ARBITRAIRES, créées par des humains avec des critères plus ou moins objectifs et plus ou moins proche de la réalité
+- quelles conséquences dans le jeu ? ca se répercute sur les équipes certainement, sur le marché FUT aussi (bat lec) 
+
+  Maintenant que notre analyse univariée est complète, nous observons une distribution en cloche, qui suit approximativement une loi normale (au niveau de la courbe de la densité), avec seulement trois valeurs aberrantes pour plus de 2000 observations. Cette distribution n'a rien d'anodin, d'autant plus que ces statistiques sont purement arbitraires, au sens où bien qu'elles soient certainenement cohérentes avec le niveau des joueuses, elles sont fixées par des critères arbitraires, par définition, des créateurs de FIFA. La forme en cloche a un intérêt pour un jeu comme FIFA, elle permet d'échelonner la valeur des joueuses de manière idéal, car la plupart des joueuses auront une valeur moyenne tandis que les plus fortes se démarqueront, et donc leur valeur (notamment sur le marché de FIFA Ultimate Team où on peut vendre des joueuses et en acheter) va exploser. Mais au-delà de l'intérêt pour le marché sur FIFA Ultimate Team, nous pourrions nous demander si une telle distribution, si idéalisée, permet de retranscrire au plus proche de la réalité le niveau des joueuses, et comment arbitre les créateurs du jeu entre la volonté de correspondre au niveau réelle des joueuses, et l'intérêt simpliste de les distribuer selon une loi normale. Pour apporter une nuance à cette critique, overall ne signifie pas du tout l'essentiel sur une joueuse, et d'autres variables qui seront étudiés dans une analyse en composantes principales plus tard, permettent de distinguer les joueuses qui ont des notes overall similaires.
+
+VI - ACP réduite des caractéristiques principales cartes fifa
+
+  Pour procéder à une analyse en composantes principales, nous devons tout d'abord choisir des variables. Nous décidons ici de garder les six caractéristiques principales affichées directement sur la carte de chaque joueuse, car d'une part, elles donnent un profil complet de chaque joueuse, et d'autre part, elles risquent assez naturellement d'être corrélées. Voyons cela tout d'abord avec la matrice des corrélations.
+
+```{r}
+fifa_ACP <- fifa_clean %>%
+  na.omit() %>%           #on craint que les lignes retirées enlèvent un type précis de joueur mais il n'y a pas le choix
+  select(c("pace","shooting", "dribbling", "passing", "defending", "physic")) #c'est bon, la base est "nettoyée" et prête à être utilisée
+```
+
+```{r}
+fifa_ACP %>%
+  correlate(use = "pairwise.complete.obs") %>%
+  rplot() +
+  labs(title = "Matrice des correlations entre les caractéristiques des joueuses") +
+  theme_minimal()
+```
+Nous observons donc bien des corrélations, et plus précisemment des corrélations positives relativement fortes entre les qualités de dribbleuse, de passeuse et le tir, ce qui forme un profil d'attaque, puis entre les qualités de défense et le physique, ce qui forme un second profil plutôt défensif, avec des variables qui sont justement corrélées négativement avec les variables d'attaque. Nous allons étudier s'il existe en effet deux profils de joueurs qui se dégagentn de l'ACP.
+
+```{r}
+ACP <- fifa_ACP %>% 
+  prcomp(scale=TRUE)
+
+summary(ACP)
+```
+```{r}
+var_exp <- tidy(ACP, matrix = "pcs")
+
+var_exp %>%
+  kable(digits = 6,
+        col.names = c("PC", "Ecart-type", "% variance", "% cumule"),
+        caption = "Variance expliquée par composante")   
+```
+  Ces premiers résultats sont très positifs pour la représentation à venir car lorsque l'on utilise la fonction prcomp pour une ACP, on garde généralement les composantes princpales dont la standard deviation est supérieure à 1 et ici il y en a deux, ce qui permettre une représentation graphique en 2D très pratique. On remarque aussi des valeurs de variance cumulées qui augmentent rapidement, ce qui signifie que certains profils clairs de joueurs se dégagent.
+
+```{r}
+var_exp %>%
+  ggplot(aes(x = PC)) +            #la variable PC est dans un dataframe qui n'est pas afficher avant, mais qui correspond au yableau produit par la fonction tidy plus tôt mais sans le renommage effectué dans un second temps, c'est la même chose pour la variable cumulative en dessous
+  geom_col(aes(y = percent), fill = "aquamarine4", alpha = 0.85, colour = "black") +
+  geom_line(aes(y = cumulative), colour = "indianred3", linewidth = 1.2) +
+  geom_point(aes(y = cumulative), colour = "indianred3", size = 3) +
+  geom_hline(yintercept = 0.75, linetype = "dashed", colour = "grey15") +   #au vu des résultats précédents, on choisit volontairement le seuil de 75% de variance cumulée car il nous permet de nous contenter des deux premières composantes principales tout en étant très satisfaisant
+  scale_x_continuous(breaks = 1:5) +       #très pratique esthétiquement, permet de controler les valeurs sur l'axe des ordonnée à titre indicatif, pour mieux se repérer
+  labs(title = "Screeplot-ACP sur les covariables fifa",
+       subtitle = "Barres : variance individuelle | Courbe rouge : variance cumulée",
+       x = "Composante principale", y = "Part de variance") +
+  theme_minimal()
+```
+  Nous obtenons des résultats cohérents avec nos précédentes observations, la variance individuelle est très importante pour la première composante principale, puis deux fois moins mais quand même importante pour la deuxième, avec presque 25%, et enfin plus du tout importante pour les dernière. Ca se traduit dans la courbe de variance cumulée, avec un applatissement dès la deuxième composante principale atteinte, lorsque le seuil des 75% de variancee cumulée, représenté par la ligne en pointillée, est atteinte.
+  
+  Maintenant que nous avons ces premières observation, il nous faut pousser notre analyse et chercher quelles variables contribuent le plus à chaque composantes principales.
+```{r}
+loadings_long <- tidy(ACP, matrix = "v")   #cette fonction est primordial, car elle donne les coordonnées des variables sur chaque composante principale
+
+loadings_wide <- loadings_long %>%
+  pivot_wider(names_from = PC,            #pivot_wider nous permet de passer d'un tableau difficileùent exploitable à un table dans lequel les coordonnées de chaque variables seront toutes sur la même ligne, avec les PC en colonne, elle permet même de renommer les colonnes, ici par exeple, on ajoute un préfixe car ça facilitera la compréhension du code dans les prochains chunk
+              values_from = value,
+              names_prefix = "PC")
+
+loadings_wide %>%
+  kable(digits = 6,                     #on les laisse toutes pour analyser les différences entre des composantes principales à forte variance expliquée et d'autres avec une faible variance expliquée
+        caption = "Coordonnées des variables sur chaque PC")   #caption sert à donner un titre au graphique
+```
+  Ces premiers résultats sont très parlants. En effet, les variables offensives (vitesse, dribble, passe, tir) sont très significativement représentées dans la premières composante principale (coordonnées proches de -1, le signe n'a aucun sens ici, tout ce que nous disent ces valeurs, c'est que la première composante principale oppose les joueuses offensives et les joueuses défensives), et plus du tout dans la deuxième (valeurs proches de 0). En contrepartie, on observe l'exact opposée pour les variables défensives (défense et physique). Il semble donc qu'on retrouve les profils d'attaque et de défense dont on avait fait l'hypothèse plus tôt.
+  Ce qui est intéressant à relever aussi, c'est que pour les dernières composantes principales, aucune convergence ne ressort, les coordonnées sont soit aux alentours de 0.5, donc peu significatives, soit pas du tout significatives, et les rassemblements entre variables à peu près significatives n'ont aucun sens. Par exemple, la PC5 est positivement corrélée aux qualités de passeuse, mais négativement corrélée aux qualités de défenseuse et de tireuse, donc ça semble correspondre aux milieux de terrains, mais en même temps la vitesse ne compte pas alors que les milieux de terrain sont censées être rapide car elles font la jonction entre l'attaque et la défense donc elles doivent vite repartir en attaque ou en défense.
+  
+  Nous allons désormais observer un graphique qui représente ces corrélations, mais que pour les deux premières composantes principales, il s'agit du cercle des corrélations.
+
+
+
+```{r}
+fviz_pca_var(ACP,                    #cette fonction trace directement le cercle des corrélations
+             col.var = "cos2",          #permet de colorer chaque point en fonction de la significativité de sa représentation
+             gradient.cols = c("darkgoldenrod1", "darkorange", "darkred"),  #permet de faire le dégradé de couleur
+             repel = TRUE,                 #ça évite que les labels se chevauchent
+             title = "Cercle des corrélations de l'ACP FIFA")
+```
+  Les résultats attendus sont bien là, deux profils sont clairement établis, l'un groupant les qualités offensives, l'autre groupant les qualités défensives, mais nous pouvons enrichir notre analyse. Tout d'abord, nous observons à partir de la gradation de couleurs les variables qui sont plus ou moins bien représentées par cette approximation en deux composantes principales, c'est à dire que certains variables sont plus ou moins bien représentés par la répartition en deux composantes principales qui correspondent à l'attaque et la défense. Le résultat général est que toutes les variables sont relativement bien représentées, mais il est pertinent d'ajouter que dribbling s'inscrit le mieux dans ce découpage en deux composantes, c'est la variable la plus significativement représentée, tandis que pace est la moins bien représentée. 
+  Ce graphique revèle plus clairement les liens entre variales de chaque profil. En effet, plus deux flèches ont une direction similaire, plus elles sont dépendantes. On a donc le constant que au sein du profil d'attaque, trois variables sont très dépendantes - dribbling, shooting, pace- tandis que passing sort légèrement du lot. Ce léger écart provient davantage d'un rapprochement de passing avec un profil défensif que avec l'éloignement d'un profil d'attaque. Effectivement, les qualités de passeuse sont aussi utiles à une défenseuse qu'à une attquante. C'est d'ailleurs pour cela que passing semble à l'exact "nord-ouest" de ce cercle, à 45° de l'axe des abscisses aussi bien que des ordonnées. Enfin, les variables du profil défensif sont bien présentes et corrélées à l'axe des ordonnées (PC2) et négativement corrélées avec PC1. 
+
+Maintenant que nous avons analysé en profondeur les liens entre les composantes principales et les variables, nous allons vérifier nos résultats en observant les nuages de points sur un plan avec PC1 en abscisse et PC2 en ordonnée, et nous pourrons conclure, si l'emplacement de chaque joueuse est bien déterminé par leur donnée pour chaque graphique. 
+ 
+```{r}
+fviz_pca_ind(ACP,     #cette fonction place les points de chaque joueuse en fonction de la variable sélectionnée ci-dessus, sur le plan PC1 x PC2
+             col.ind = fifa_ACP$pace,          #choix de la variable, ici pace pour commencer
+             gradient.cols = c("deepskyblue", "chartreuse", "red"),       #on choisit les couleurs pour le dégradé et on sélectionne trois couleurs vives et différentes pour bien voir les différences
+             geom = "point",              #on met des points sur le graphique car au vu du nombre de joueuses, n'importe quelle donnée auraient pris trop de place
+             pointsize = 2,       #on définit une taille de point ni trop grosse ni trop petite en tatonnant
+             title = "Nuage des joueuses en fonction de pace dans le plan PC1 × PC2")
+```
+
+Avec la variable pace, le dégradé en fonction de l'axe PC1 est clair.
+  
+```{r}
+fviz_pca_ind(ACP,    
+             col.ind = fifa_ACP$shooting,          
+             gradient.cols = c("deepskyblue", "chartreuse", "red"),       
+             geom = "point",            
+             pointsize = 2,       
+             title = "Nuage des joueuses en fonction de shooting dans le plan PC1 × PC2")
+```
+
+Avec la variable shooting, le dégradé est encore plus clair, donc la corrélation avec PC1 est encore plus marquante, ce qui est logique, c'est la variable la plus déterminante pour un attaquant, même plus que dribble, car certains attaquants ne sont pas excellent en dribble, mais tous sont bon au tir.
+  
+```{r}
+fviz_pca_ind(ACP,    
+             col.ind = fifa_ACP$dribbling,          
+             gradient.cols = c("deepskyblue", "chartreuse", "red"),       
+             geom = "point",            
+             pointsize = 2,       
+             title = "Nuage des joueuses en fonction de dribbling dans le plan PC1 × PC2")
+```
+
+La variable dribbling aussi est nette, avec une légère orientation sur un axe sud-est vers nord-ouest, ce qui marque une très légère corrélation positive avec l'axe PC2.
+
+```{r}
+fviz_pca_ind(ACP,    
+             col.ind = fifa_ACP$passing,          
+             gradient.cols = c("deepskyblue", "chartreuse", "red"),       
+             geom = "point",            
+             pointsize = 2,       
+             title = "Nuage des joueuses en fonction de passing dans le plan PC1 × PC2")
+```
+  La variable passing est très intéressante car on observe la direction sud-est nord-ouest le plus nettement parmi les autres nuages de points, et c'est dû à son emplacement sur le cercle des corrélations, elle était presque parfaitement à 45° de chaque axe.
+  
+```{r}
+fviz_pca_ind(ACP,    
+             col.ind = fifa_ACP$defending,          
+             gradient.cols = c("deepskyblue", "chartreuse", "red"),       
+             geom = "point",            
+             pointsize = 2,       
+             title = "Nuage des joueuses en fonction de defending dans le plan PC1 × PC2")
+```
+  A l'opposé de passing, comme sur le cercle des corrélations, la variable defending a un nuage de point qui suit la direction sud-ouest vers nord-ouest.
+```{r}
+fviz_pca_ind(ACP,    
+             col.ind = fifa_ACP$physic,          
+             gradient.cols = c("deepskyblue", "chartreuse", "red"),       
+             geom = "point",            
+             pointsize = 2,       
+             title = "Nuage des joueuses en fonction de physic dans le plan PC1 × PC2")
+```
+  Enfin, le nuage de points d physic et quasiment identique que celui de defending, ce qui est logique au vu de leur dépendance très forte.
+
+
+  Nous dégageons donc de notre ACP un point essentiel pour comprendre les 6 caractéristiques centrales sur les cartes FIFA, il y a deux axes déterminants : les qualités d'attaquantes et les qualités de défenseuses. En effet, en fonction des qualités de chaque joueuse, on peut déterminer assez vite leur "position" vis à vis de ces axes, et une fois qu'on à cette information, on peut prédire quelques caractéristiques seront les plus développées chez chacune. Il parait donc évident que les attaquantes auront des relativement bonnes notes en shooting, dribbling, pace et passing, et que les défenseuses auront des relativement bonnes notes en defending, physic mais aussi passing car c'est une qualité partagée par les deux profils. Ce dernier constat nous amène à développer notre analyse plus en profondeur. En effet, si certaines caractéristiques sont clairement dédiées à certains profils de joueuse, d'autres sont plus ambivalentes, et notamment car elles correspondent surtout à un autre poste, les milieux de terrain. L'analyse en composantes principales réduit la répartition des caractéristiques en deux profils, mais les postes sont plus variés que ça, ce qui nous amène à manquer certains profils, on observe donc les limites du ACP, mais ce qui en fait aussi tout son intérêt : nous avons réduit 6 caractéristiques en 2 profils, mais donc certains nous échappent. Il faut aussi noter que durant toute notre analyse, les gardiennes n'ont pas été prise en compte car elles ont été évincées de la base de données en constituant fifa_ACP (c'est une hypothèse basée sur le fait que les gardiennes n'ont pas de notes de tir). 
